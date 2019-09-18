@@ -1,0 +1,232 @@
+diff -ur ffmpeg-4.1.4.org/libavcodec/aaccoder.c ffmpeg-4.1.4/libavcodec/aaccoder.c
+--- ffmpeg-4.1.4.org/libavcodec/aaccoder.c	2019-07-09 02:45:25.000000000 +0900
++++ ffmpeg-4.1.4/libavcodec/aaccoder.c	2019-07-10 10:29:46.000000000 +0900
+@@ -62,6 +62,9 @@
+ 
+ #include "libavcodec/aaccoder_trellis.h"
+ 
++#undef B0
++#undef B1
++
+ /**
+  * structure used in optimal codebook search
+  */
+diff -ur ffmpeg-4.1.4.org/libavcodec/h264_cabac.c ffmpeg-4.1.4/libavcodec/h264_cabac.c
+--- ffmpeg-4.1.4.org/libavcodec/h264_cabac.c	2019-07-09 02:45:25.000000000 +0900
++++ ffmpeg-4.1.4/libavcodec/h264_cabac.c	2019-07-10 10:29:46.000000000 +0900
+@@ -2347,7 +2347,7 @@
+     if (CHROMA444(h) && IS_8x8DCT(mb_type)){
+         int i;
+         uint8_t *nnz_cache = sl->non_zero_count_cache;
+-        if (h->x264_build < 151U) {
++        if (h->x264_build < 151U || h->x264_build == -1) {
+             for (i = 0; i < 2; i++){
+                 if (sl->left_type[LEFT(i)] && !IS_8x8DCT(sl->left_type[LEFT(i)])) {
+                     nnz_cache[3+8* 1 + 2*8*i]=
+diff -ur ffmpeg-4.1.4.org/libavcodec/hevc_mvs.c ffmpeg-4.1.4/libavcodec/hevc_mvs.c
+--- ffmpeg-4.1.4.org/libavcodec/hevc_mvs.c	2019-07-09 02:45:25.000000000 +0900
++++ ffmpeg-4.1.4/libavcodec/hevc_mvs.c	2019-07-10 10:29:46.000000000 +0900
+@@ -24,6 +24,10 @@
+ #include "hevc.h"
+ #include "hevcdec.h"
+ 
++#undef B0
++#undef B1
++#undef B2
++
+ static const uint8_t l0_l1_cand_idx[12][2] = {
+     { 0, 1, },
+     { 1, 0, },
+diff -ur ffmpeg-4.1.4.org/libavcodec/opus_pvq.c ffmpeg-4.1.4/libavcodec/opus_pvq.c
+--- ffmpeg-4.1.4.org/libavcodec/opus_pvq.c	2019-07-09 02:45:25.000000000 +0900
++++ ffmpeg-4.1.4/libavcodec/opus_pvq.c	2019-07-10 10:29:46.000000000 +0900
+@@ -26,6 +26,9 @@
+ #include "opustab.h"
+ #include "opus_pvq.h"
+ 
++#undef B0
++#undef B1
++
+ #define CELT_PVQ_U(n, k) (ff_celt_pvq_u_row[FFMIN(n, k)][FFMAX(n, k)])
+ #define CELT_PVQ_V(n, k) (CELT_PVQ_U(n, k) + CELT_PVQ_U(n, (k) + 1))
+ 
+diff -ur ffmpeg-4.1.4.org/libavformat/avidec.c ffmpeg-4.1.4/libavformat/avidec.c
+--- ffmpeg-4.1.4.org/libavformat/avidec.c	2019-07-09 02:45:25.000000000 +0900
++++ ffmpeg-4.1.4/libavformat/avidec.c	2019-07-10 10:29:46.000000000 +0900
+@@ -124,10 +124,11 @@
+ static inline int get_duration(AVIStream *ast, int len)
+ {
+     if (ast->sample_size)
+-        return len;
+-    else if (ast->dshow_block_align)
+-        return (len + ast->dshow_block_align - 1) / ast->dshow_block_align;
+-    else
++        return ast->sample_size > len ? ast->sample_size : len;
++    else if (ast->dshow_block_align) {
++        int dur = (len + ast->dshow_block_align - 1) / ast->dshow_block_align;
++        return dur * ast->scale / ast->rate ? 1 : dur;
++    } else
+         return 1;
+ }
+ 
+@@ -1345,7 +1346,7 @@
+         int64_t ts     = ast->frame_offset;
+         int64_t last_ts;
+ 
+-        if (!st->nb_index_entries)
++        if (!st->nb_index_entries || st->codecpar->codec_type == AVMEDIA_TYPE_SUBTITLE)
+             continue;
+ 
+         last_ts = st->index_entries[st->nb_index_entries - 1].timestamp;
+diff -ur ffmpeg-4.1.4.org/libavformat/hls.c ffmpeg-4.1.4/libavformat/hls.c
+--- ffmpeg-4.1.4.org/libavformat/hls.c	2019-07-09 02:45:26.000000000 +0900
++++ ffmpeg-4.1.4/libavformat/hls.c	2019-07-10 10:29:46.000000000 +0900
+@@ -1895,10 +1895,7 @@
+ 
+         pls->read_buffer = av_malloc(INITIAL_BUFFER_SIZE);
+         if (!pls->read_buffer){
+-            ret = AVERROR(ENOMEM);
+-            avformat_free_context(pls->ctx);
+-            pls->ctx = NULL;
+-            goto fail;
++            continue;
+         }
+         ffio_init_context(&pls->pb, pls->read_buffer, INITIAL_BUFFER_SIZE, 0, pls,
+                           read_data, NULL, NULL);
+@@ -1911,9 +1908,7 @@
+              * avformat_open_input fails below, it frees and zeros the
+              * context, so it doesn't need any special treatment like this. */
+             av_log(s, AV_LOG_ERROR, "Error when loading first segment '%s'\n", pls->segments[0]->url);
+-            avformat_free_context(pls->ctx);
+-            pls->ctx = NULL;
+-            goto fail;
++            continue;
+         }
+         pls->ctx->pb       = &pls->pb;
+         pls->ctx->io_open  = nested_io_open;
+@@ -1923,9 +1918,7 @@
+             goto fail;
+ 
+         ret = avformat_open_input(&pls->ctx, pls->segments[0]->url, in_fmt, NULL);
+-        if (ret < 0)
+-            goto fail;
+-
++        
+         if (pls->id3_deferred_extra && pls->ctx->nb_streams == 1) {
+             ff_id3v2_parse_apic(pls->ctx, &pls->id3_deferred_extra);
+             avformat_queue_attached_pictures(pls->ctx);
+@@ -2239,9 +2232,10 @@
+     }
+     /* check if the timestamp is valid for the playlist with the
+      * specified stream index */
+-    if (!seek_pls || !find_timestamp_in_playlist(c, seek_pls, seek_timestamp, &seq_no))
++    if (!seek_pls)
+         return AVERROR(EIO);
+-
++    find_timestamp_in_playlist(c, seek_pls, seek_timestamp, &seq_no);
++    
+     /* set segment now so we do not need to search again below */
+     seek_pls->cur_seq_no = seq_no;
+     seek_pls->seek_stream_index = stream_subdemuxer_index;
+diff -ur ffmpeg-4.1.4.org/libavformat/id3v2.c ffmpeg-4.1.4/libavformat/id3v2.c
+--- ffmpeg-4.1.4.org/libavformat/id3v2.c	2019-07-09 02:45:26.000000000 +0900
++++ ffmpeg-4.1.4/libavformat/id3v2.c	2019-07-10 10:29:46.000000000 +0900
+@@ -255,14 +255,6 @@
+     }
+ 
+     switch (encoding) {
+-    case ID3v2_ENCODING_ISO8859:
+-        while (left && ch) {
+-            ch = avio_r8(pb);
+-            PUT_UTF8(ch, tmp, avio_w8(dynbuf, tmp);)
+-            left--;
+-        }
+-        break;
+-
+     case ID3v2_ENCODING_UTF16BOM:
+         if ((left -= 2) < 0) {
+             av_log(s, AV_LOG_ERROR, "Cannot read BOM value, input too short\n");
+@@ -293,15 +285,13 @@
+             left += 2;  /* did not read last char from pb */
+         break;
+ 
+-    case ID3v2_ENCODING_UTF8:
++    default:
+         while (left && ch) {
+             ch = avio_r8(pb);
+             avio_w8(dynbuf, ch);
+             left--;
+         }
+         break;
+-    default:
+-        av_log(s, AV_LOG_WARNING, "Unknown encoding\n");
+     }
+ 
+     if (ch)
+@@ -376,15 +366,14 @@
+     lang[3] = '\0';
+     taglen -= 3;
+ 
+-    if (decode_str(s, pb, encoding, &descriptor, &taglen) < 0)
+-        goto error;
++    decode_str(s, pb, encoding, &descriptor, &taglen);
+ 
+     if (decode_str(s, pb, encoding, &text, &taglen) < 0)
+         goto error;
+ 
+     // FFmpeg does not support hierarchical metadata, so concatenate the keys.
+-    key = av_asprintf("lyrics-%s%s%s", descriptor[0] ? (char *)descriptor : "",
+-                                       descriptor[0] ? "-" : "",
++    key = av_asprintf("lyrics-%s%s%s", descriptor && descriptor[0] ? (char *)descriptor :  "",
++                                       descriptor && descriptor[0] ? "-" : "",
+                                        lang);
+     if (!key)
+         goto error;
+diff -ur ffmpeg-4.1.4.org/libavformat/isom.c ffmpeg-4.1.4/libavformat/isom.c
+--- ffmpeg-4.1.4.org/libavformat/isom.c	2019-07-09 02:45:26.000000000 +0900
++++ ffmpeg-4.1.4/libavformat/isom.c	2019-08-19 13:38:41.000000000 +0900
+@@ -163,6 +163,7 @@
+ 
+     { AV_CODEC_ID_HEVC, MKTAG('h', 'e', 'v', '1') }, /* HEVC/H.265 which indicates parameter sets may be in ES */
+     { AV_CODEC_ID_HEVC, MKTAG('h', 'v', 'c', '1') }, /* HEVC/H.265 which indicates parameter sets shall not be in ES */
++    { AV_CODEC_ID_HEVC, MKTAG('d', 'v', 'h', 'e') },
+ 
+     { AV_CODEC_ID_H264, MKTAG('a', 'v', 'c', '1') }, /* AVC-1/H.264 */
+     { AV_CODEC_ID_H264, MKTAG('a', 'v', 'c', '2') },
+@@ -185,7 +186,8 @@
+     { AV_CODEC_ID_H264, MKTAG('r', 'v', '6', '4') }, /* X-Com Radvision */
+     { AV_CODEC_ID_H264, MKTAG('x', 'a', 'l', 'g') }, /* XAVC-L HD422 produced by FCP */
+     { AV_CODEC_ID_H264, MKTAG('a', 'v', 'l', 'g') }, /* Panasonic P2 AVC-LongG */
+-
++    { AV_CODEC_ID_H264, MKTAG('d', 'v', 'a', '1') },
++    
+     { AV_CODEC_ID_VP8,  MKTAG('v', 'p', '0', '8') }, /* VP8 */
+     { AV_CODEC_ID_VP9,  MKTAG('v', 'p', '0', '9') }, /* VP9 */
+     { AV_CODEC_ID_AV1,  MKTAG('a', 'v', '0', '1') }, /* AV1 */
+diff -ur ffmpeg-4.1.4.org/libavformat/movenc.c ffmpeg-4.1.4/libavformat/movenc.c
+--- ffmpeg-4.1.4.org/libavformat/movenc.c	2019-07-09 02:45:26.000000000 +0900
++++ ffmpeg-4.1.4/libavformat/movenc.c	2019-08-19 13:39:04.000000000 +0900
+@@ -6755,8 +6755,11 @@
+     { AV_CODEC_ID_MPEG4       , MKTAG('m', 'p', '4', 'v') },
+     { AV_CODEC_ID_H264        , MKTAG('a', 'v', 'c', '1') },
+     { AV_CODEC_ID_H264        , MKTAG('a', 'v', 'c', '3') },
++    { AV_CODEC_ID_H264        , MKTAG('d', 'v', 'a', '1') },
+     { AV_CODEC_ID_HEVC        , MKTAG('h', 'e', 'v', '1') },
+     { AV_CODEC_ID_HEVC        , MKTAG('h', 'v', 'c', '1') },
++    { AV_CODEC_ID_HEVC        , MKTAG('d', 'v', 'h', '1') },
++    { AV_CODEC_ID_HEVC        , MKTAG('d', 'v', 'h', 'e') },
+     { AV_CODEC_ID_MPEG2VIDEO  , MKTAG('m', 'p', '4', 'v') },
+     { AV_CODEC_ID_MPEG1VIDEO  , MKTAG('m', 'p', '4', 'v') },
+     { AV_CODEC_ID_MJPEG       , MKTAG('m', 'p', '4', 'v') },
+diff -ur ffmpeg-4.1.4.org/libavformat/mpegts.c ffmpeg-4.1.4/libavformat/mpegts.c
+--- ffmpeg-4.1.4.org/libavformat/mpegts.c	2019-07-09 02:45:26.000000000 +0900
++++ ffmpeg-4.1.4/libavformat/mpegts.c	2019-07-10 10:29:46.000000000 +0900
+@@ -776,6 +776,8 @@
+     { MKTAG('D', 'T', 'S', '1'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_DTS   },
+     { MKTAG('D', 'T', 'S', '2'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_DTS   },
+     { MKTAG('D', 'T', 'S', '3'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_DTS   },
++    { MKTAG('D', 'T', 'S', 'H'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_DTS   },
++    { MKTAG('D', 'T', 'S', 'E'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_DTS   },
+     { MKTAG('E', 'A', 'C', '3'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_EAC3  },
+     { MKTAG('H', 'E', 'V', 'C'), AVMEDIA_TYPE_VIDEO, AV_CODEC_ID_HEVC  },
+     { MKTAG('K', 'L', 'V', 'A'), AVMEDIA_TYPE_DATA,  AV_CODEC_ID_SMPTE_KLV },
