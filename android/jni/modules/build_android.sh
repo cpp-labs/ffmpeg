@@ -2,7 +2,7 @@
 
 trap exit ERR
 
-LIBS="openssl bz2 FFmpeg"
+LIBS="FFmpeg"
 for LIB in $LIBS; do 
     pushd $LIB 
     ./build_android.sh

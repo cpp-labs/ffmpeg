@@ -18,5 +18,6 @@ include $(BUILD_SHARED_LIBRARY)
 $(call import-add-path, $(LOCAL_PATH)/modules)
 $(call import-module,openssl)
 $(call import-module,bz2)
+$(call import-module,dav1d)
 $(call import-module,FFmpeg)
 

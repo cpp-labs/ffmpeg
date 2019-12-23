@@ -1,0 +1,14 @@
+prefix=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/x86_64
+exec_prefix=${prefix}
+libdir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/x86_64/lib
+includedir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/x86_64/include
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 58.54.100
+Requires: libswresample >= 3.5.100, libavutil >= 56.31.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavcodec -pthread -lm -L/usr/local/lib -lz -L/Users/powell/Developer/nplayer.git/third_party/dav1d/build/Android/x86_64/lib -ldav1d -pthread
+Libs.private: 
+Cflags: -I${includedir}

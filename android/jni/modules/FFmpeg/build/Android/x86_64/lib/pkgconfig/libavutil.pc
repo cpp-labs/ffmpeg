@@ -1,0 +1,14 @@
+prefix=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/x86_64
+exec_prefix=${prefix}
+libdir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/x86_64/lib
+includedir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/x86_64/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 56.31.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil -pthread -lm
+Libs.private: 
+Cflags: -I${includedir}

@@ -1,0 +1,14 @@
+prefix=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/armeabi-v7a-vfpv3-d16
+exec_prefix=${prefix}
+libdir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/armeabi-v7a-vfpv3-d16/lib
+includedir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/armeabi-v7a-vfpv3-d16/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 56.31.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil -pthread -lm
+Libs.private: 
+Cflags: -I${includedir}

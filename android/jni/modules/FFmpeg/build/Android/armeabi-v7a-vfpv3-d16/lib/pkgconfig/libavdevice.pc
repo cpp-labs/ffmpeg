@@ -1,0 +1,14 @@
+prefix=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/armeabi-v7a-vfpv3-d16
+exec_prefix=${prefix}
+libdir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/armeabi-v7a-vfpv3-d16/lib
+includedir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/armeabi-v7a-vfpv3-d16/include
+
+Name: libavdevice
+Description: FFmpeg device handling library
+Version: 58.8.100
+Requires: libavformat >= 58.29.100, libavcodec >= 58.54.100, libswresample >= 3.5.100, libavutil >= 56.31.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavdevice -lm
+Libs.private: 
+Cflags: -I${includedir}

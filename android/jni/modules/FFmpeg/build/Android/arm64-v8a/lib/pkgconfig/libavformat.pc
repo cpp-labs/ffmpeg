@@ -1,0 +1,14 @@
+prefix=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/arm64-v8a
+exec_prefix=${prefix}
+libdir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/arm64-v8a/lib
+includedir=/Users/powell/Developer/FFmpeg/jni/modules/FFmpeg/build/Android/arm64-v8a/include
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 58.29.100
+Requires: libavcodec >= 58.54.100, libswresample >= 3.5.100, libavutil >= 56.31.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavformat -lm -lbz2 -L/usr/local/lib -lz -L/Users/powell/Developer/nplayer.git/third_party/openssl/build/tmp/Android/arm64-v8a/lib -lssl -lcrypto
+Libs.private: 
+Cflags: -I${includedir}
